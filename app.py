@@ -203,7 +203,7 @@ def main():
         
         hands = mp_hands.Hands(
             static_image_mode=False, 
-            max_num_hands=1,
+            max_num_hands=2,
             min_detection_confidence=0.7, 
             min_tracking_confidence=0.7
         )
@@ -267,19 +267,38 @@ def main():
             # -----------------------
             
             if results.multi_hand_landmarks:
-                hand_landmarks = results.multi_hand_landmarks[0]
+                # Setup modifier logic
+                modifier_active = False
+                primary_hand = results.multi_hand_landmarks[0]
                 
-                # Draw skeleton
-                mp_drawing.draw_landmarks(
-                    rgb_frame,
-                    hand_landmarks,
-                    mp_hands.HAND_CONNECTIONS,
-                    mp_drawing_styles.get_default_hand_landmarks_style(),
-                    mp_drawing_styles.get_default_hand_connections_style()
-                )
+                # Check for 2nd hand acting as a Shift/Modifier (Closed Fist)
+                if len(results.multi_hand_landmarks) == 2:
+                    hand1 = results.multi_hand_landmarks[0]
+                    hand2 = results.multi_hand_landmarks[1]
+                    
+                    states1 = get_finger_states(hand1)
+                    states2 = get_finger_states(hand2)
+                    
+                    closed_fist = (False, False, False, False, False)
+                    if states1 == closed_fist and states2 != closed_fist:
+                        modifier_active = True
+                        primary_hand = hand2
+                    elif states2 == closed_fist and states1 != closed_fist:
+                        modifier_active = True
+                        primary_hand = hand1
+
+                # Draw skeleton for all detected hands
+                for hand_landmarks in results.multi_hand_landmarks:
+                    mp_drawing.draw_landmarks(
+                        rgb_frame,
+                        hand_landmarks,
+                        mp_hands.HAND_CONNECTIONS,
+                        mp_drawing_styles.get_default_hand_landmarks_style(),
+                        mp_drawing_styles.get_default_hand_connections_style()
+                    )
                         
-                # 1. Extract 5 Finger States
-                finger_states = get_finger_states(hand_landmarks)
+                # 1. Extract 5 Finger States for the active primary hand
+                finger_states = get_finger_states(primary_hand)
                 
                 # 2. Map combination to phrase
                 detected_gesture_name = "None"
@@ -287,6 +306,20 @@ def main():
                 
                 if recognition_mode == "Conversational Phrases":
                     detected_gesture_name = SIGNS_MAPPING.get(finger_states, "None")
+                    
+                    # Apply "Shift Key" Modifier Logic
+                    if modifier_active and detected_gesture_name != "None":
+                        MODIFIER_DICTIONARY = {
+                            'Hello': 'Goodbye',
+                            'Yes': 'No',
+                            'Need Help': 'I am Fine',
+                            'Good Morning': 'Good Night',
+                            'Pay Attention': 'Ignore This',
+                            'Time': 'No Time',
+                            'Together': 'Alone',
+                            'Peace': 'War'
+                        }
+                        detected_gesture_name = MODIFIER_DICTIONARY.get(detected_gesture_name, f"Reverse of {detected_gesture_name}")
                 else:
                     # Teach the AI Mode
                     if teaching_phrase and teaching_phrase != st.session_state['last_taught_phrase']:
