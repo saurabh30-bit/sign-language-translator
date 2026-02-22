@@ -284,15 +284,26 @@ def main():
             # 3. Time threshold and UI rendering
             if detected_gesture_name != "None":
                 if recognition_mode == "Conversational Phrases":
-                    translated_text = TRANSLATIONS.get(detected_gesture_name, {}).get(language, detected_gesture_name) + emotion_modifier
+                    base_text = str(TRANSLATIONS.get(detected_gesture_name, {}).get(language, detected_gesture_name))
                 else:
-                    translated_text = detected_gesture_name + emotion_modifier
+                    base_text = str(detected_gesture_name)
+                    
+                # Apply Emotion Modifiers (Tone and Inflection)
+                tone_color = "#4CAF50" # Default Green
+                tts_text = base_text
+                
+                if emotion_modifier == " (Polite)":
+                    tone_color = "#2196F3" # Friendly Blue
+                    tts_text = base_text + " please!"
+                elif emotion_modifier == " (Urgent)":
+                    tone_color = "#F44336" # Urgent Red
+                    tts_text = base_text + "!!!"
                 
                 # Update UI only if changed (prevents massive Streamlit WebSocket lag)
                 if is_actively_teaching:
-                    new_html = f"<h1 style='text-align: center; color: #FFA500;'>Learning: '{translated_text}'...</h1>"
+                    new_html = f"<h1 style='text-align: center; color: #FFA500;'>Learning: '{base_text}'...</h1>"
                 else:
-                    new_html = f"<h1 style='text-align: center; color: #4CAF50;'>{translated_text}</h1>"
+                    new_html = f"<h1 style='text-align: center; color: {tone_color};'>{base_text}</h1>"
                     
                 if new_html != last_rendered_gesture_html:
                     gesture_text_placeholder.markdown(new_html, unsafe_allow_html=True)
@@ -302,7 +313,7 @@ def main():
                     current_gesture = detected_gesture_name
                     gesture_start_time = time.time()
                     
-                    new_status = f"Hold shape steady to lock in '{translated_text}'..." if is_actively_teaching else f"Holding: {translated_text}..."
+                    new_status = f"Hold shape steady to lock in '{base_text}'..." if is_actively_teaching else f"Holding: {base_text}..."
                     if new_status != last_rendered_status_text:
                         status_placeholder.info(new_status)
                         last_rendered_status_text = new_status
@@ -311,24 +322,24 @@ def main():
                     
                     if is_actively_teaching:
                         if elapsed_time > 2.0:
-                            st.session_state['custom_signs'][finger_states] = translated_text
-                            st.session_state['last_taught_phrase'] = translated_text
+                            st.session_state['custom_signs'][finger_states] = base_text
+                            st.session_state['last_taught_phrase'] = base_text
                             
-                            new_status = f"🎉 SUCCESS! Bound hand shape to '{translated_text}'"
+                            new_status = f"🎉 SUCCESS! Bound hand shape to '{base_text}'"
                             if new_status != last_rendered_status_text:
                                 status_placeholder.success(new_status)
                                 last_rendered_status_text = new_status
                     else:
                         if elapsed_time > 1.5:
                             if last_spoken_gesture != current_gesture:
-                                # Fire separate thread for TTS Audio
+                                # Fire separate thread for TTS Audio with tone inflection
                                 threading.Thread(
                                     target=play_audio_thread, 
-                                    args=(translated_text, lang_codes[language]), 
+                                    args=(tts_text, lang_codes[language]), 
                                     daemon=True
                                 ).start()
                                 
-                                new_status = f"Spoken: {translated_text}"
+                                new_status = f"Spoken: {base_text}"
                                 if new_status != last_rendered_status_text:
                                     status_placeholder.success(new_status)
                                     last_rendered_status_text = new_status
