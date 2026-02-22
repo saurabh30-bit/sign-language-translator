@@ -63,6 +63,35 @@ TRANSLATIONS = {
     'Sorry': {'English': 'Sorry', 'Hindi': 'मुझे माफ़ कर दो', 'Marathi': 'मला माफ करून दे'}
 }
 
+ALPHABET_MAPPING = {
+    (False, False, False, False, False): 'A',
+    (False, True, True, True, True): 'B',
+    (True, True, True, True, True): 'C',
+    (False, True, False, False, False): 'D',
+    (True, False, False, False, False): 'E',
+    (False, False, True, True, True): 'F',
+    (True, True, False, False, True): 'G',
+    (False, True, True, False, False): 'H',
+    (False, False, False, False, True): 'I',
+    (False, False, False, True, True): 'J',
+    (True, True, True, False, False): 'K',
+    (True, True, False, False, False): 'L',
+    (False, True, True, True, False): 'M',
+    (False, True, True, False, True): 'N',
+    (True, False, False, False, True): 'O', 
+    (True, False, False, True, True): 'P',
+    (True, False, True, True, True): 'Q',
+    (True, True, True, True, False): 'R',
+    (False, True, False, True, False): 'S',
+    (False, True, False, False, True): 'T',
+    (False, True, False, True, True): 'U',
+    (True, False, True, False, False): 'V',
+    (False, False, True, False, False): 'W',
+    (False, False, True, False, True): 'X',
+    (False, False, True, True, False): 'Y',
+    (True, False, True, False, True): 'Z'
+}
+
 # ==========================
 # HEURISTIC LOGIC
 # ==========================
@@ -143,6 +172,7 @@ def main():
         
     # Sidebar
     st.sidebar.title("Settings")
+    recognition_mode = st.sidebar.radio("Select Recognition Mode:", ["Conversational Phrases", "A-Z Alphabets"])
     language = st.sidebar.selectbox("Select Language Output:", ["English", "Hindi", "Marathi"])
     camera_index = st.sidebar.selectbox("Select Camera Source:", available_cameras, index=0)
     run_webcam = st.sidebar.checkbox("Start Live Recognition", value=False)
@@ -209,12 +239,18 @@ def main():
                 # 1. Extract 5 Finger States
                 finger_states = get_finger_states(hand_landmarks)
                 
-                # 2. Map combination to phrase
-                detected_gesture_name = SIGNS_MAPPING.get(finger_states, "None")
+                # 2. Map combination to phrase or alphabet
+                if recognition_mode == "Conversational Phrases":
+                    detected_gesture_name = SIGNS_MAPPING.get(finger_states, "None")
+                else:
+                    detected_gesture_name = ALPHABET_MAPPING.get(finger_states, "None")
             
             # 3. Time threshold and UI rendering
             if detected_gesture_name != "None":
-                translated_text = TRANSLATIONS.get(detected_gesture_name, {}).get(language, detected_gesture_name)
+                if recognition_mode == "Conversational Phrases":
+                    translated_text = TRANSLATIONS.get(detected_gesture_name, {}).get(language, detected_gesture_name)
+                else:
+                    translated_text = detected_gesture_name
                 
                 # Update UI immediately so user sees what is currently detected
                 gesture_text_placeholder.markdown(f"<h1 style='text-align: center; color: #4CAF50;'>{translated_text}</h1>", unsafe_allow_html=True)
