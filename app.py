@@ -141,8 +141,26 @@ def main():
     if not available_cameras:
         available_cameras = [0]
         
+    # Session state for custom signs
+    if 'custom_signs' not in st.session_state:
+        st.session_state['custom_signs'] = {}
+    if 'last_taught_phrase' not in st.session_state:
+        st.session_state['last_taught_phrase'] = ""
+
     # Sidebar
     st.sidebar.title("Settings")
+    recognition_mode = st.sidebar.radio("Select Recognition Mode:", ["Conversational Phrases", "Teach the AI"])
+    
+    teaching_phrase = ""
+    if recognition_mode == "Teach the AI":
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 🧠 Teach a New Sign")
+        st.sidebar.write(f"**Custom memory:** {len(st.session_state['custom_signs'])} signs")
+        teaching_phrase = st.sidebar.text_input("1. Type phrase & hit Enter\n2. Hold gesture 2 seconds to bind:", key="new_phrase").strip()
+        if st.sidebar.button("Clear Memory"):
+            st.session_state['custom_signs'] = {}
+            st.rerun()
+
     language = st.sidebar.selectbox("Select Language Output:", ["English", "Hindi", "Marathi"])
     camera_index = st.sidebar.selectbox("Select Camera Source:", available_cameras, index=0)
     run_webcam = st.sidebar.checkbox("Start Live Recognition", value=False)
@@ -210,34 +228,60 @@ def main():
                 finger_states = get_finger_states(hand_landmarks)
                 
                 # 2. Map combination to phrase
-                detected_gesture_name = SIGNS_MAPPING.get(finger_states, "None")
+                detected_gesture_name = "None"
+                is_actively_teaching = False
+                
+                if recognition_mode == "Conversational Phrases":
+                    detected_gesture_name = SIGNS_MAPPING.get(finger_states, "None")
+                else:
+                    # Teach the AI Mode
+                    if teaching_phrase and teaching_phrase != st.session_state['last_taught_phrase']:
+                        detected_gesture_name = teaching_phrase
+                        is_actively_teaching = True
+                    else:
+                        detected_gesture_name = st.session_state['custom_signs'].get(finger_states, "None")
             
             # 3. Time threshold and UI rendering
             if detected_gesture_name != "None":
-                translated_text = TRANSLATIONS.get(detected_gesture_name, {}).get(language, detected_gesture_name)
+                if recognition_mode == "Conversational Phrases":
+                    translated_text = TRANSLATIONS.get(detected_gesture_name, {}).get(language, detected_gesture_name)
+                else:
+                    translated_text = detected_gesture_name
                 
-                # Update UI immediately so user sees what is currently detected
-                gesture_text_placeholder.markdown(f"<h1 style='text-align: center; color: #4CAF50;'>{translated_text}</h1>", unsafe_allow_html=True)
+                # Update UI immediately
+                if is_actively_teaching:
+                    gesture_text_placeholder.markdown(f"<h1 style='text-align: center; color: #FFA500;'>Learning: '{translated_text}'...</h1>", unsafe_allow_html=True)
+                else:
+                    gesture_text_placeholder.markdown(f"<h1 style='text-align: center; color: #4CAF50;'>{translated_text}</h1>", unsafe_allow_html=True)
                 
                 if detected_gesture_name != current_gesture:
                     current_gesture = detected_gesture_name
                     gesture_start_time = time.time()
-                    status_placeholder.info(f"Holding: {translated_text}...")
+                    if is_actively_teaching:
+                        status_placeholder.info(f"Hold shape steady to lock in '{translated_text}'...")
+                    else:
+                        status_placeholder.info(f"Holding: {translated_text}...")
                 else:
                     elapsed_time = time.time() - gesture_start_time
-                    # 4. Critical 1.5 second hold requirement
-                    if elapsed_time > 1.5:
-                        if last_spoken_gesture != current_gesture:
-                            status_placeholder.success(f"Spoken: {translated_text}")
-                            
-                            # Fire separate thread for TTS Audio
-                            threading.Thread(
-                                target=play_audio_thread, 
-                                args=(translated_text, lang_codes[language]), 
-                                daemon=True
-                            ).start()
-                            
-                            last_spoken_gesture = current_gesture
+                    
+                    if is_actively_teaching:
+                        if elapsed_time > 2.0:
+                            st.session_state['custom_signs'][finger_states] = translated_text
+                            st.session_state['last_taught_phrase'] = translated_text
+                            status_placeholder.success(f"🎉 SUCCESS! Bound hand shape to '{translated_text}'")
+                    else:
+                        if elapsed_time > 1.5:
+                            if last_spoken_gesture != current_gesture:
+                                status_placeholder.success(f"Spoken: {translated_text}")
+                                
+                                # Fire separate thread for TTS Audio
+                                threading.Thread(
+                                    target=play_audio_thread, 
+                                    args=(translated_text, lang_codes[language]), 
+                                    daemon=True
+                                ).start()
+                                
+                                last_spoken_gesture = current_gesture
             else:
                 current_gesture = None
                 gesture_start_time = None
