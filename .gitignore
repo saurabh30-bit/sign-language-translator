@@ -1,0 +1,6 @@
+__pycache__/
+*.pkl
+*.task
+*.csv
+.env
+*.mp3
