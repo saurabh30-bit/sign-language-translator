@@ -200,6 +200,10 @@ def main():
         gesture_start_time = 0.0
         last_spoken_gesture = None
         
+        # UI state cache to prevent Streamlit WebSocket lag
+        last_rendered_gesture_html = ""
+        last_rendered_status_text = ""
+        
         while run_webcam:
             ret, frame = cap.read()
             if not ret:
@@ -248,19 +252,24 @@ def main():
                 else:
                     translated_text = detected_gesture_name
                 
-                # Update UI immediately
+                # Update UI only if changed (prevents massive Streamlit WebSocket lag)
                 if is_actively_teaching:
-                    gesture_text_placeholder.markdown(f"<h1 style='text-align: center; color: #FFA500;'>Learning: '{translated_text}'...</h1>", unsafe_allow_html=True)
+                    new_html = f"<h1 style='text-align: center; color: #FFA500;'>Learning: '{translated_text}'...</h1>"
                 else:
-                    gesture_text_placeholder.markdown(f"<h1 style='text-align: center; color: #4CAF50;'>{translated_text}</h1>", unsafe_allow_html=True)
+                    new_html = f"<h1 style='text-align: center; color: #4CAF50;'>{translated_text}</h1>"
+                    
+                if new_html != last_rendered_gesture_html:
+                    gesture_text_placeholder.markdown(new_html, unsafe_allow_html=True)
+                    last_rendered_gesture_html = new_html
                 
                 if detected_gesture_name != current_gesture:
                     current_gesture = detected_gesture_name
                     gesture_start_time = time.time()
-                    if is_actively_teaching:
-                        status_placeholder.info(f"Hold shape steady to lock in '{translated_text}'...")
-                    else:
-                        status_placeholder.info(f"Holding: {translated_text}...")
+                    
+                    new_status = f"Hold shape steady to lock in '{translated_text}'..." if is_actively_teaching else f"Holding: {translated_text}..."
+                    if new_status != last_rendered_status_text:
+                        status_placeholder.info(new_status)
+                        last_rendered_status_text = new_status
                 else:
                     elapsed_time = time.time() - gesture_start_time
                     
@@ -268,12 +277,14 @@ def main():
                         if elapsed_time > 2.0:
                             st.session_state['custom_signs'][finger_states] = translated_text
                             st.session_state['last_taught_phrase'] = translated_text
-                            status_placeholder.success(f"🎉 SUCCESS! Bound hand shape to '{translated_text}'")
+                            
+                            new_status = f"🎉 SUCCESS! Bound hand shape to '{translated_text}'"
+                            if new_status != last_rendered_status_text:
+                                status_placeholder.success(new_status)
+                                last_rendered_status_text = new_status
                     else:
                         if elapsed_time > 1.5:
                             if last_spoken_gesture != current_gesture:
-                                status_placeholder.success(f"Spoken: {translated_text}")
-                                
                                 # Fire separate thread for TTS Audio
                                 threading.Thread(
                                     target=play_audio_thread, 
@@ -281,12 +292,25 @@ def main():
                                     daemon=True
                                 ).start()
                                 
+                                new_status = f"Spoken: {translated_text}"
+                                if new_status != last_rendered_status_text:
+                                    status_placeholder.success(new_status)
+                                    last_rendered_status_text = new_status
+                                
                                 last_spoken_gesture = current_gesture
             else:
                 current_gesture = None
                 gesture_start_time = None
-                gesture_text_placeholder.markdown(f"<h1 style='text-align: center; color: gray;'>No Sign Detected</h1>", unsafe_allow_html=True)
-                status_placeholder.empty()
+                last_spoken_gesture = None  # Reset TTS memory so the same sign can be spoken again later!
+                
+                new_html = f"<h1 style='text-align: center; color: gray;'>No Sign Detected</h1>"
+                if new_html != last_rendered_gesture_html:
+                    gesture_text_placeholder.markdown(new_html, unsafe_allow_html=True)
+                    last_rendered_gesture_html = new_html
+                    
+                if last_rendered_status_text != "":
+                    status_placeholder.empty()
+                    last_rendered_status_text = ""
             
             frame_window.image(rgb_frame, channels="RGB")
             
