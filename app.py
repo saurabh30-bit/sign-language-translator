@@ -183,6 +183,7 @@ def main():
     if run_webcam:
         # Initialize pure MediaPipe Tracking
         mp_hands = mp.solutions.hands
+        mp_face_mesh = mp.solutions.face_mesh
         mp_drawing = mp.solutions.drawing_utils
         mp_drawing_styles = mp.solutions.drawing_styles
         
@@ -191,6 +192,13 @@ def main():
             max_num_hands=1,
             min_detection_confidence=0.7, 
             min_tracking_confidence=0.7
+        )
+        face_mesh = mp_face_mesh.FaceMesh(
+            static_image_mode=False,
+            max_num_faces=1,
+            refine_landmarks=True,
+            min_detection_confidence=0.5,
+            min_tracking_confidence=0.5
         )
         
         cap = cv2.VideoCapture(camera_index)
@@ -214,7 +222,35 @@ def main():
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
             results = hands.process(rgb_frame)
+            face_results = face_mesh.process(rgb_frame)
+            
             detected_gesture_name = "None"
+            emotion_modifier = ""
+            
+            # --- Emotion Tagging ---
+            if face_results.multi_face_landmarks:
+                face_landmarks = face_results.multi_face_landmarks[0]
+                
+                # Face width for normalization: 234 (Left Edge) to 454 (Right Edge)
+                face_left_x = face_landmarks.landmark[234].x
+                face_right_x = face_landmarks.landmark[454].x
+                face_width = abs(face_right_x - face_left_x)
+                
+                if face_width > 0:
+                    # Lip corners: 61 (Left), 291 (Right)
+                    left_x = face_landmarks.landmark[61].x
+                    left_y = face_landmarks.landmark[61].y
+                    right_x = face_landmarks.landmark[291].x
+                    right_y = face_landmarks.landmark[291].y
+                    
+                    mouth_width = ((right_x - left_x)**2 + (right_y - left_y)**2)**0.5
+                    mouth_ratio = mouth_width / face_width
+                    
+                    if mouth_ratio > 0.44:
+                        emotion_modifier = " (Polite)"
+                    elif mouth_ratio < 0.35:
+                        emotion_modifier = " (Urgent)"
+            # -----------------------
             
             if results.multi_hand_landmarks:
                 hand_landmarks = results.multi_hand_landmarks[0]
@@ -248,9 +284,9 @@ def main():
             # 3. Time threshold and UI rendering
             if detected_gesture_name != "None":
                 if recognition_mode == "Conversational Phrases":
-                    translated_text = TRANSLATIONS.get(detected_gesture_name, {}).get(language, detected_gesture_name)
+                    translated_text = TRANSLATIONS.get(detected_gesture_name, {}).get(language, detected_gesture_name) + emotion_modifier
                 else:
-                    translated_text = detected_gesture_name
+                    translated_text = detected_gesture_name + emotion_modifier
                 
                 # Update UI only if changed (prevents massive Streamlit WebSocket lag)
                 if is_actively_teaching:
