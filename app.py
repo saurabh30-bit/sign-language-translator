@@ -70,27 +70,41 @@ TRANSLATIONS = {
 def get_finger_states(hand_landmarks):
     """
     Returns a tuple of 5 booleans representing if (Thumb, Index, Middle, Ring, Pinky) are open.
+    Uses Dynamic Distance Normalization (scale and rotation invariant).
     """
+    import math
+    
+    # Landmark 0: Wrist, Landmark 9: Middle Finger MCP (Base)
+    wrist = hand_landmarks.landmark[0]
+    middle_mcp = hand_landmarks.landmark[9]
+    
+    # Calculate baseline unit (1.0) for the user's specific hand size and camera distance
+    base_dist = math.hypot(wrist.x - middle_mcp.x, wrist.y - middle_mcp.y)
+    if base_dist == 0:
+        base_dist = 0.001 # Prevent division by zero
+        
     fingers = []
     
-    # Thumb: Check distance from tip vs ip to pinky mcp to abstract handedness
-    thumb_tip_x = hand_landmarks.landmark[4].x
-    thumb_ip_x = hand_landmarks.landmark[3].x
-    pinky_mcp_x = hand_landmarks.landmark[17].x
+    # 1. Thumb (Tip: 4, Pinky MCP Base: 17)
+    # The thumb swings outward horizontally when open, so the distance from its tip 
+    # to the opposite side of the hand (pinky base) must exceed the baseline substantially.
+    thumb_tip = hand_landmarks.landmark[4]
+    pinky_mcp = hand_landmarks.landmark[17]
+    thumb_dist = math.hypot(thumb_tip.x - pinky_mcp.x, thumb_tip.y - pinky_mcp.y)
     
-    # If the tip is further from the pinky base than the inner joint, the thumb is "open"
-    if abs(thumb_tip_x - pinky_mcp_x) > abs(thumb_ip_x - pinky_mcp_x):
-        fingers.append(True)
-    else:
-        fingers.append(False)
+    # Open thumb is generally > 1.2x the base palm distance
+    fingers.append(thumb_dist / base_dist > 1.2)
         
-    # Index, Middle, Ring, Pinky: tip y-coordinate vs pip y-coordinate
+    # 2. Four Fingers (Tips: 8, 12, 16, 20)
+    # Fully extended fingers are structurally far from the wrist.
+    # Closed knuckles curl into the palm, moving the tip significantly closer to the wrist.
     tips = [8, 12, 16, 20]
-    pips = [6, 10, 14, 18]
-    
-    for tip, pip in zip(tips, pips):
-        # Open if tip is physically above the pip (smaller y means higher in image coords)
-        fingers.append(hand_landmarks.landmark[tip].y < hand_landmarks.landmark[pip].y)
+    for tip_idx in tips:
+        tip = hand_landmarks.landmark[tip_idx]
+        dist = math.hypot(tip.x - wrist.x, tip.y - wrist.y)
+        
+        # Extended finger tip > 1.5x the palm unit distance from the wrist
+        fingers.append(dist / base_dist > 1.5)
         
     return tuple(fingers)
 
