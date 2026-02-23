@@ -329,8 +329,8 @@ def main():
                 plt.tight_layout()
                 fig.canvas.draw()
                 
-                img_3d = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-                img_3d = img_3d.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+                img_3d = np.asarray(fig.canvas.buffer_rgba())
+                img_3d = img_3d[:, :, :3] # Slice RGBA to RGB
                 plt.close(fig)
                 
                 z_axis_placeholder.image(img_3d, channels="RGB", use_container_width=True)
