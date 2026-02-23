@@ -7,6 +7,10 @@ import threading
 from gtts import gTTS
 import pygame
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import numpy as np
 # Initialize pygame mixer once
 if not pygame.mixer.get_init():
     pygame.mixer.init()
@@ -191,6 +195,8 @@ def main():
         gesture_text_placeholder = st.empty()
         st.markdown("### Status")
         status_placeholder = st.empty()
+        st.markdown("### Live 3D Depth Map")
+        z_axis_placeholder = st.empty()
         
     lang_codes = {"English": "en", "Hindi": "hi", "Marathi": "mr"}
     
@@ -297,6 +303,38 @@ def main():
                         mp_drawing_styles.get_default_hand_connections_style()
                     )
                         
+                # -----------------------
+                # Live 3D Z-Axis Map (The Pro Flex)
+                # -----------------------
+                fig = plt.figure(figsize=(3, 3), facecolor='#0E1117')
+                ax = fig.add_subplot(111, projection='3d')
+                ax.set_facecolor('#0E1117')
+                
+                xs = [lm.x for lm in primary_hand.landmark]
+                ys = [-lm.y for lm in primary_hand.landmark] 
+                zs = [-lm.z for lm in primary_hand.landmark] 
+                
+                ax.scatter(xs, zs, ys, c='#FFA500', marker='o', s=20) 
+                
+                for connection in mp_hands.HAND_CONNECTIONS:
+                    start_idx, end_idx = connection
+                    ax.plot(
+                        [xs[start_idx], xs[end_idx]], 
+                        [zs[start_idx], zs[end_idx]], 
+                        [ys[start_idx], ys[end_idx]], 
+                        color='#4CAF50', linewidth=2
+                    )
+                    
+                ax.set_axis_off()
+                plt.tight_layout()
+                fig.canvas.draw()
+                
+                img_3d = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+                img_3d = img_3d.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+                plt.close(fig)
+                
+                z_axis_placeholder.image(img_3d, channels="RGB", use_container_width=True)
+                
                 # 1. Extract 5 Finger States for the active primary hand
                 finger_states = get_finger_states(primary_hand)
                 
@@ -405,6 +443,7 @@ def main():
                 if last_rendered_status_text != "":
                     status_placeholder.empty()
                     last_rendered_status_text = ""
+                    z_axis_placeholder.empty()
             
             frame_window.image(rgb_frame, channels="RGB")
             

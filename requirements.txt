@@ -6,3 +6,4 @@ scikit-learn
 gTTS
 pygame
 Pillow
+matplotlib
