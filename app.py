@@ -167,9 +167,10 @@ def main():
 
     # Sidebar
     st.sidebar.title("Settings")
-    recognition_mode = st.sidebar.radio("Select Recognition Mode:", ["Conversational Phrases", "Teach the AI"])
+    recognition_mode = st.sidebar.radio("Select Recognition Mode:", ["Conversational Phrases", "Teach the AI", "Tutor Mode (Gamified)"])
     
     teaching_phrase = ""
+    target_practice_word = ""
     if recognition_mode == "Teach the AI":
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 🧠 Teach a New Sign")
@@ -178,6 +179,12 @@ def main():
         if st.sidebar.button("Clear Memory"):
             st.session_state['custom_signs'] = {}
             st.rerun()
+    elif recognition_mode == "Tutor Mode (Gamified)":
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 🎮 Sign Language Tutor")
+        practice_words = list(set(SIGNS_MAPPING.values()))
+        if "None" in practice_words: practice_words.remove("None")
+        target_practice_word = st.sidebar.selectbox("Choose a word to practice:", sorted(practice_words))
 
     language = st.sidebar.selectbox("Select Language Output:", ["English", "Hindi", "Marathi"])
     camera_index = st.sidebar.selectbox("Select Camera Source:", available_cameras, index=0)
@@ -358,13 +365,46 @@ def main():
                             'Peace': 'War'
                         }
                         detected_gesture_name = MODIFIER_DICTIONARY.get(detected_gesture_name, f"Reverse of {detected_gesture_name}")
-                else:
+                elif recognition_mode == "Teach the AI":
                     # Teach the AI Mode
                     if teaching_phrase and teaching_phrase != st.session_state['last_taught_phrase']:
                         detected_gesture_name = teaching_phrase
                         is_actively_teaching = True
                     else:
                         detected_gesture_name = st.session_state['custom_signs'].get(finger_states, "None")
+                elif recognition_mode == "Tutor Mode (Gamified)":
+                    if target_practice_word in SIGNS_MAPPING.values():
+                        # Find exactly which tuple defines this word
+                        target_tuple = list(SIGNS_MAPPING.keys())[list(SIGNS_MAPPING.values()).index(target_practice_word)]
+                        
+                        if finger_states == target_tuple:
+                            # Shape Match! Ramp up accuracy stringently over 2.0s
+                            if gesture_start_time is None:
+                                gesture_start_time = time.time()
+                            elapsed_time = min(time.time() - gesture_start_time, 2.0)
+                            accuracy = int(50 + (elapsed_time / 2.0) * 50)
+                            
+                            tutor_html = f"<div style='background-color:#0E1117; padding:20px; border-radius:10px; border: 2px solid #4CAF50;'> <h3 style='color:white; margin-bottom:5px;'>Target: {target_practice_word}</h3> <h2 style='color:#4CAF50; margin-top:0px;'>Accuracy: {accuracy}% 🎯</h2> <progress value='{accuracy}' max='100' style='width:100%; height:25px;'></progress> </div>"
+                            
+                            if accuracy == 100:
+                                new_status = f"🎉 PERFECT SCORE! You mastered '{target_practice_word}'!"
+                                if new_status != last_rendered_status_text:
+                                    status_placeholder.success(new_status)
+                                    last_rendered_status_text = new_status
+                        else:
+                            gesture_start_time = time.time()
+                            # Calculate partial boolean match (Max 40% if shape is wrong)
+                            matches = sum(1 for a, b in zip(finger_states, target_tuple) if a == b)
+                            base_accuracy = int((matches / 5.0) * 40)
+                            
+                            tutor_html = f"<div style='background-color:#0E1117; padding:20px; border-radius:10px; border: 2px solid #FFA500;'> <h3 style='color:white; margin-bottom:5px;'>Target: {target_practice_word}</h3> <h2 style='color:#FFA500; margin-top:0px;'>Accuracy: {base_accuracy}% 👀</h2> <progress value='{base_accuracy}' max='100' style='width:100%; height:25px;'></progress> </div>"
+                            
+                        if tutor_html != last_rendered_gesture_html:
+                            gesture_text_placeholder.markdown(tutor_html, unsafe_allow_html=True)
+                            last_rendered_gesture_html = tutor_html
+                            
+                        # Bypass standard conversational output for Tutor Mode rendering
+                        detected_gesture_name = "None"
             
             # 3. Time threshold and UI rendering
             if detected_gesture_name != "None":
