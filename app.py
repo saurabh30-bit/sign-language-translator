@@ -333,7 +333,7 @@ def main():
                 img_3d = img_3d[:, :, :3] # Slice RGBA to RGB
                 plt.close(fig)
                 
-                z_axis_placeholder.image(img_3d, channels="RGB", use_container_width=True)
+                z_axis_placeholder.image(img_3d, channels="RGB", use_column_width=True)
                 
                 # 1. Extract 5 Finger States for the active primary hand
                 finger_states = get_finger_states(primary_hand)
