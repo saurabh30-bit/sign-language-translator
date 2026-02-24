@@ -310,7 +310,11 @@ def main():
                         emotion_modifier = " (Urgent)"
             # -----------------------
             
+            # --- OVERLAY TELEMETRY ---
+            cv2.putText(rgb_frame, f"MODE: {recognition_mode}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+            
             if results.multi_hand_landmarks:
+                cv2.putText(rgb_frame, "HAND: DETECTED", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 hand_lost_frames = 0
                 # Setup modifier logic
                 modifier_active = False
@@ -405,7 +409,10 @@ def main():
                     else:
                         detected_gesture_name = st.session_state['custom_signs'].get(finger_states, "None")
                 elif recognition_mode == "Tutor Mode (Gamified)":
+                    cv2.putText(rgb_frame, "TUTOR BLOCK: ACTIVE", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                    
                     if target_practice_word in SIGNS_MAPPING.values():
+                        cv2.putText(rgb_frame, f"TARGET: {target_practice_word}", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                         # Find exactly which tuple defines this word
                         target_tuple = list(SIGNS_MAPPING.keys())[list(SIGNS_MAPPING.values()).index(target_practice_word)]
                         
