@@ -264,8 +264,8 @@ def main():
         if 'alphabet_sentence' not in st.session_state:
             st.session_state['alphabet_sentence'] = ""
             
-        prediction_buffer = deque(maxlen=20)
-        gesture_locked = False
+        prediction_buffer = deque(maxlen=15)
+        last_alphabet_char = None
         # ------------------------------------
         
         while run_webcam:
@@ -459,15 +459,16 @@ def main():
                         if max_prob > 0.80:
                             prediction_buffer.append(predicted_char)
                             
-                        if len(prediction_buffer) == 20 and not gesture_locked:
+                        if len(prediction_buffer) == 15:
                             final_letter = Counter(prediction_buffer).most_common(1)[0][0]
-                            if final_letter == "SPACE":
-                                st.session_state['alphabet_sentence'] += " "
-                            elif final_letter == "DELETE":
-                                st.session_state['alphabet_sentence'] = st.session_state['alphabet_sentence'][:-1]
-                            else:
-                                st.session_state['alphabet_sentence'] += final_letter
-                            gesture_locked = True
+                            if final_letter != last_alphabet_char:
+                                if final_letter == "SPACE":
+                                    st.session_state['alphabet_sentence'] += " "
+                                elif final_letter == "DELETE":
+                                    st.session_state['alphabet_sentence'] = st.session_state['alphabet_sentence'][:-1]
+                                else:
+                                    st.session_state['alphabet_sentence'] += final_letter
+                                last_alphabet_char = final_letter
                             prediction_buffer.clear()
                             
                         word_html = f"<div style='background-color:#1E1E1E; padding:20px; border-radius:10px;'> <h4 style='color:white; margin:0px;'>Current Letter: <span style='color:#4CAF50;'>{predicted_char}</span> ({int(max_prob*100)}%)</h4> <hr style='border-color:gray;'> <h2 style='color:white;'>Sentence: <span style='color:#FFA500;'>{st.session_state['alphabet_sentence']}</span></h2> </div>"
@@ -552,7 +553,7 @@ def main():
                 # Keep alphabet sentence on screen even if hand goes down
                 if recognition_mode == "Alphabet Mode (A-Z)":
                     new_html = f"<div style='background-color:#1E1E1E; padding:20px; border-radius:10px;'> <h4 style='color:gray; margin:0px;'>No Hand Detected...</h4> <hr style='border-color:gray;'> <h2 style='color:white;'>Sentence: <span style='color:#FFA500;'>{st.session_state.get('alphabet_sentence', '')}</span></h2> </div>"
-                    gesture_locked = False
+                    last_alphabet_char = None
                     prediction_buffer.clear()
                     
                 if new_html != last_rendered_gesture_html:
