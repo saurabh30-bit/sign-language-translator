@@ -4,6 +4,9 @@ import mediapipe as mp
 import time
 import os
 import threading
+import pickle
+import numpy as np
+from collections import deque, Counter
 from gtts import gTTS
 import pygame
 
@@ -167,7 +170,10 @@ def main():
 
     # Sidebar
     st.sidebar.title("Settings")
-    recognition_mode = st.sidebar.radio("Select Recognition Mode:", ["Conversational Phrases", "Teach the AI", "Tutor Mode (Gamified)"])
+    recognition_mode = st.sidebar.radio(
+        "Select Recognition Mode:", 
+        ["Conversational Phrases", "Teach the AI", "Tutor Mode (Gamified)", "Alphabet Mode (A-Z)"]
+    )
     
     teaching_phrase = ""
     target_practice_word = ""
@@ -185,6 +191,13 @@ def main():
         practice_words = list(set(SIGNS_MAPPING.values()))
         if "None" in practice_words: practice_words.remove("None")
         target_practice_word = st.sidebar.selectbox("Choose a word to practice:", sorted(practice_words))
+    elif recognition_mode == "Alphabet Mode (A-Z)":
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 🔤 Continuous Spelling")
+        st.sidebar.info("Uses the advanced A-Z Neural Network imported from the secondary repository.")
+        if st.sidebar.button("Clear Typed Sentence"):
+            st.session_state['alphabet_sentence'] = ""
+            st.rerun()
 
     language = st.sidebar.selectbox("Select Language Output:", ["English", "Hindi", "Marathi"])
     camera_index = st.sidebar.selectbox("Select Camera Source:", available_cameras, index=0)
@@ -238,6 +251,22 @@ def main():
         # UI state cache to prevent Streamlit WebSocket lag
         last_rendered_gesture_html = ""
         last_rendered_status_text = ""
+        
+        # --- Alphabet Mode Initialization ---
+        alphabet_model = None
+        if os.path.exists("model.p"):
+            try:
+                model_dict = pickle.load(open("model.p", "rb"))
+                alphabet_model = model_dict["model"]
+            except Exception as e:
+                st.error(f"Error loading Alphabet Neural Network: {e}")
+                
+        if 'alphabet_sentence' not in st.session_state:
+            st.session_state['alphabet_sentence'] = ""
+            
+        prediction_buffer = deque(maxlen=20)
+        gesture_locked = False
+        # ------------------------------------
         
         while run_webcam:
             ret, frame = cap.read()
@@ -405,6 +434,50 @@ def main():
                             
                         # Bypass standard conversational output for Tutor Mode rendering
                         detected_gesture_name = "None"
+                        
+                elif recognition_mode == "Alphabet Mode (A-Z)":
+                    if alphabet_model is None:
+                        error_html = "<div style='background-color:#500000; padding:20px; border-radius:10px;'> <h3 style='color:white;'>⚠️ Alphabet Model Missing!</h3> <p style='color:white;'>Your friend's repository actively blocked <code>model.p</code> from uploading via `.gitignore`!</p> <p style='color:yellow;'>Please ask them to send you the <code>model.p</code> file on WhatsApp/Discord, drag it into this project folder, and this feature will unlock instantly.</p> </div>"
+                        if error_html != last_rendered_gesture_html:
+                            gesture_text_placeholder.markdown(error_html, unsafe_allow_html=True)
+                            last_rendered_gesture_html = error_html
+                        detected_gesture_name = "None"
+                    else:
+                        # Extract 42-feature coordinate array (relative to bounding box minimums)
+                        x_list = [lm.x for lm in primary_hand.landmark]
+                        y_list = [lm.y for lm in primary_hand.landmark]
+                        
+                        nn_data = []
+                        for lm in primary_hand.landmark:
+                            nn_data.append(lm.x - min(x_list))
+                            nn_data.append(lm.y - min(y_list))
+                            
+                        probabilities = alphabet_model.predict_proba([np.asarray(nn_data)])[0]
+                        max_prob = np.max(probabilities)
+                        predicted_char = alphabet_model.classes_[np.argmax(probabilities)]
+                        
+                        if max_prob > 0.80:
+                            prediction_buffer.append(predicted_char)
+                            
+                        if len(prediction_buffer) == 20 and not gesture_locked:
+                            final_letter = Counter(prediction_buffer).most_common(1)[0][0]
+                            if final_letter == "SPACE":
+                                st.session_state['alphabet_sentence'] += " "
+                            elif final_letter == "DELETE":
+                                st.session_state['alphabet_sentence'] = st.session_state['alphabet_sentence'][:-1]
+                            else:
+                                st.session_state['alphabet_sentence'] += final_letter
+                            gesture_locked = True
+                            prediction_buffer.clear()
+                            
+                        word_html = f"<div style='background-color:#1E1E1E; padding:20px; border-radius:10px;'> <h4 style='color:white; margin:0px;'>Current Letter: <span style='color:#4CAF50;'>{predicted_char}</span> ({int(max_prob*100)}%)</h4> <hr style='border-color:gray;'> <h2 style='color:white;'>Sentence: <span style='color:#FFA500;'>{st.session_state['alphabet_sentence']}</span></h2> </div>"
+                        
+                        if word_html != last_rendered_gesture_html:
+                            gesture_text_placeholder.markdown(word_html, unsafe_allow_html=True)
+                            last_rendered_gesture_html = word_html
+                            
+                        # Mute conversational output because we have our own UI above
+                        detected_gesture_name = "None"
             
             # 3. Time threshold and UI rendering
             if detected_gesture_name != "None":
@@ -476,6 +549,12 @@ def main():
                 last_spoken_gesture = None  # Reset TTS memory so the same sign can be spoken again later!
                 
                 new_html = f"<h1 style='text-align: center; color: gray;'>No Sign Detected</h1>"
+                # Keep alphabet sentence on screen even if hand goes down
+                if recognition_mode == "Alphabet Mode (A-Z)":
+                    new_html = f"<div style='background-color:#1E1E1E; padding:20px; border-radius:10px;'> <h4 style='color:gray; margin:0px;'>No Hand Detected...</h4> <hr style='border-color:gray;'> <h2 style='color:white;'>Sentence: <span style='color:#FFA500;'>{st.session_state.get('alphabet_sentence', '')}</span></h2> </div>"
+                    gesture_locked = False
+                    prediction_buffer.clear()
+                    
                 if new_html != last_rendered_gesture_html:
                     gesture_text_placeholder.markdown(new_html, unsafe_allow_html=True)
                     last_rendered_gesture_html = new_html
