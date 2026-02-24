@@ -456,12 +456,13 @@ def main():
                         max_prob = np.max(probabilities)
                         predicted_char = alphabet_model.classes_[np.argmax(probabilities)]
                         
-                        if max_prob > 0.80:
-                            prediction_buffer.append(predicted_char)
+                        prediction_buffer.append(predicted_char)
                             
                         if len(prediction_buffer) == 15:
                             final_letter = Counter(prediction_buffer).most_common(1)[0][0]
-                            if final_letter != last_alphabet_char:
+                            
+                            # Only accept if it's a new letter and confidence is somewhat reasonable
+                            if final_letter != last_alphabet_char and max_prob > 0.40:
                                 if final_letter == "SPACE":
                                     st.session_state['alphabet_sentence'] += " "
                                 elif final_letter == "DELETE":
@@ -469,9 +470,13 @@ def main():
                                 else:
                                     st.session_state['alphabet_sentence'] += final_letter
                                 last_alphabet_char = final_letter
-                            prediction_buffer.clear()
+                            # Do not clear buffer completely, just pop oldest to create a continuous sliding window!
+                            prediction_buffer.popleft() 
                             
-                        word_html = f"<div style='background-color:#1E1E1E; padding:20px; border-radius:10px;'> <h4 style='color:white; margin:0px;'>Current Letter: <span style='color:#4CAF50;'>{predicted_char}</span> ({int(max_prob*100)}%)</h4> <hr style='border-color:gray;'> <h2 style='color:white;'>Sentence: <span style='color:#FFA500;'>{st.session_state['alphabet_sentence']}</span></h2> </div>"
+                        # Dynamic color for confidence
+                        conf_color = "#4CAF50" if max_prob > 0.60 else "#FFA500" if max_prob > 0.40 else "#FF0000"
+                            
+                        word_html = f"<div style='background-color:#1E1E1E; padding:20px; border-radius:10px;'> <h4 style='color:white; margin:0px;'>Current Letter: <span style='color:{conf_color};'>{predicted_char}</span> ({int(max_prob*100)}%)</h4> <hr style='border-color:gray;'> <h2 style='color:white;'>Sentence: <span style='color:#FFA500;'>{st.session_state['alphabet_sentence']}</span></h2> </div>"
                         
                         if word_html != last_rendered_gesture_html:
                             gesture_text_placeholder.markdown(word_html, unsafe_allow_html=True)
