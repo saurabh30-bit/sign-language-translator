@@ -230,8 +230,8 @@ def main():
         hands = mp_hands.Hands(
             static_image_mode=False, 
             max_num_hands=2,
-            min_detection_confidence=0.7, 
-            min_tracking_confidence=0.7
+            min_detection_confidence=0.5, 
+            min_tracking_confidence=0.5
         )
         face_mesh = mp_face_mesh.FaceMesh(
             static_image_mode=False,
@@ -575,7 +575,7 @@ def main():
                 gesture_start_time = None
                 last_spoken_gesture = None  # Reset TTS memory so the same sign can be spoken again later!
                 
-                new_html = f"<h1 style='text-align: center; color: gray;'>No Sign Detected</h1>"
+                new_html = f"<h1 style='text-align: center; color: gray;'>No Hand Detected...</h1>"
                 # Keep alphabet sentence on screen even if hand goes down
                 if recognition_mode == "Alphabet Mode (A-Z)":
                     new_html = f"<div style='background-color:#1E1E1E; padding:20px; border-radius:10px;'> <h4 style='color:gray; margin:0px;'>No Hand Detected...</h4> <hr style='border-color:gray;'> <h2 style='color:white;'>Sentence: <span style='color:#FFA500;'>{st.session_state.get('alphabet_sentence', '')}</span></h2> </div>"
