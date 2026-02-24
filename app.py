@@ -267,6 +267,7 @@ def main():
         prediction_buffer = deque(maxlen=5)
         last_alphabet_char = None
         hand_lost_frames = 0
+        tutor_mismatch_frames = 0
         # ------------------------------------
         
         while run_webcam:
@@ -409,6 +410,7 @@ def main():
                         target_tuple = list(SIGNS_MAPPING.keys())[list(SIGNS_MAPPING.values()).index(target_practice_word)]
                         
                         if finger_states == target_tuple:
+                            tutor_mismatch_frames = 0
                             # Shape Match! Ramp up accuracy stringently over 2.0s
                             if gesture_start_time is None:
                                 gesture_start_time = time.time()
@@ -422,8 +424,16 @@ def main():
                                 if new_status != last_rendered_status_text:
                                     status_placeholder.success(new_status)
                                     last_rendered_status_text = new_status
+                                    # Output audio feedback!
+                                    try:
+                                        audio_queue.put(f"Perfect! You mastered {target_practice_word}")
+                                    except:
+                                        pass
                         else:
-                            gesture_start_time = time.time()
+                            tutor_mismatch_frames += 1
+                            if tutor_mismatch_frames > 5:
+                                gesture_start_time = time.time()
+                                
                             # Calculate partial boolean match (Max 40% if shape is wrong)
                             matches = sum(1 for a, b in zip(finger_states, target_tuple) if a == b)
                             base_accuracy = int((matches / 5.0) * 40)
