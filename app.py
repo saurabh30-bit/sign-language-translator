@@ -439,6 +439,14 @@ def main():
                         
                 elif recognition_mode == "Alphabet Mode (A-Z)":
                     if alphabet_model is None:
+                        if os.path.exists("model.p"):
+                            try:
+                                model_dict = pickle.load(open("model.p", "rb"))
+                                alphabet_model = model_dict["model"]
+                            except Exception as e:
+                                pass
+                                
+                    if alphabet_model is None:
                         error_html = "<div style='background-color:#500000; padding:20px; border-radius:10px;'> <h3 style='color:white;'>⚠️ Alphabet Model Missing!</h3> <p style='color:white;'>Your friend's repository actively blocked <code>model.p</code> from uploading via `.gitignore`!</p> <p style='color:yellow;'>Please ask them to send you the <code>model.p</code> file on WhatsApp/Discord, drag it into this project folder, and this feature will unlock instantly.</p> </div>"
                         if error_html != last_rendered_gesture_html:
                             gesture_text_placeholder.markdown(error_html, unsafe_allow_html=True)
