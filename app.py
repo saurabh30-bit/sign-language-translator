@@ -264,8 +264,9 @@ def main():
         if 'alphabet_sentence' not in st.session_state:
             st.session_state['alphabet_sentence'] = ""
             
-        prediction_buffer = deque(maxlen=15)
+        prediction_buffer = deque(maxlen=5)
         last_alphabet_char = None
+        hand_lost_frames = 0
         # ------------------------------------
         
         while run_webcam:
@@ -309,6 +310,7 @@ def main():
             # -----------------------
             
             if results.multi_hand_landmarks:
+                hand_lost_frames = 0
                 # Setup modifier logic
                 modifier_active = False
                 primary_hand = results.multi_hand_landmarks[0]
@@ -456,9 +458,10 @@ def main():
                         max_prob = np.max(probabilities)
                         predicted_char = alphabet_model.classes_[np.argmax(probabilities)]
                         
-                        prediction_buffer.append(predicted_char)
+                        if max_prob > 0.30:  # aggressively collect
+                            prediction_buffer.append(predicted_char)
                             
-                        if len(prediction_buffer) == 15:
+                        if len(prediction_buffer) == 5:
                             final_letter = Counter(prediction_buffer).most_common(1)[0][0]
                             
                             # Only accept if it's a new letter and confidence is somewhat reasonable
@@ -470,8 +473,8 @@ def main():
                                 else:
                                     st.session_state['alphabet_sentence'] += final_letter
                                 last_alphabet_char = final_letter
-                            # Do not clear buffer completely, just pop oldest to create a continuous sliding window!
-                            prediction_buffer.popleft() 
+                            # Do not clear buffer completely! 
+                            pass
                             
                         # Dynamic color for confidence
                         conf_color = "#4CAF50" if max_prob > 0.60 else "#FFA500" if max_prob > 0.40 else "#FF0000"
@@ -558,8 +561,11 @@ def main():
                 # Keep alphabet sentence on screen even if hand goes down
                 if recognition_mode == "Alphabet Mode (A-Z)":
                     new_html = f"<div style='background-color:#1E1E1E; padding:20px; border-radius:10px;'> <h4 style='color:gray; margin:0px;'>No Hand Detected...</h4> <hr style='border-color:gray;'> <h2 style='color:white;'>Sentence: <span style='color:#FFA500;'>{st.session_state.get('alphabet_sentence', '')}</span></h2> </div>"
-                    last_alphabet_char = None
-                    prediction_buffer.clear()
+                    
+                    hand_lost_frames += 1
+                    if hand_lost_frames > 5:
+                        last_alphabet_char = None
+                        prediction_buffer.clear()
                     
                 if new_html != last_rendered_gesture_html:
                     gesture_text_placeholder.markdown(new_html, unsafe_allow_html=True)
