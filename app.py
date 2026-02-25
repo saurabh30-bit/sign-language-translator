@@ -180,16 +180,16 @@ def main():
         ### Pre-Programmed Heuristic Gestures
         Learn how to perform the core gestures recognized by the AI:
         
-        | ✋ Emoji Form | Fingers Extended | Live Translation |
-        | :--- | :--- | :--- |
-        | 🖐️ **Open Palm** | All 5 fingers extended | `Hello` |
-        | ✊ **Closed Fist** | All fingers tucked into palm | `I need help` |
-        | 🤙 **Shaka Sign** | Thumb & Pinky extended | `Need Water` |
-        | ✌️ **Peace Sign** | Index & Middle fingers extended | `Peace` |
-        | ☝️ **Pointing Up** | Only Index finger extended | `Pay Attention` |
-        | 👈 **L-Shape** | Thumb & Index extended | `Wait here` |
-        | 🤏 **Pinky Point**| Only Pinky extended | `Excuse me` |
-        | 🖖 **Three Fingers**| Index, Middle, Ring extended | `Options` |
+        | ✋ Emoji Form | Fingers Extended | English | Hindi (हिंदी) | Marathi (मराठी) |
+        | :--- | :--- | :--- | :--- | :--- |
+        | 🖐️ **Open Palm** | All 5 fingers extended | `Hello` | नमस्ते | नमस्कार |
+        | ✊ **Closed Fist** | All fingers tucked into palm | `I need help` | मुझे मदद चाहिए | मला मदत हवी आहे |
+        | 🤙 **Shaka Sign** | Thumb & Pinky extended | `Need Water` | पानी चाहिए | पाणी हवे आहे |
+        | ✌️ **Peace Sign** | Index & Middle fingers extended | `Peace` | शांति | शांतता |
+        | ☝️ **Pointing Up** | Only Index finger extended | `Pay Attention` | ध्यान दें | लक्षात घ्या |
+        | 👈 **L-Shape** | Thumb & Index extended | `Wait here` | यहाँ प्रतीक्षा करें | येथे थांबा |
+        | 🤏 **Pinky Point**| Only Pinky extended | `Excuse me` | माफ़ कीजिए | मला माफ करा |
+        | 🖖 **Three Fingers**| Index, Middle, Ring extended | `Options` | विकल्प | पर्याय |
         
         *Tip: You can use the "Teach the AI" mode to bind completely custom gestures of your own choosing during active runtime.*
         """)
