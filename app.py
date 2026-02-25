@@ -249,6 +249,16 @@ def main():
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 🔤 Continuous Spelling")
         st.sidebar.info("Uses the advanced A-Z Neural Network imported from the secondary repository.")
+        
+        with st.sidebar.expander("📖 A-Z Sign Photo Guide", expanded=False):
+            if os.path.exists("asl.png"):
+                st.image("asl.png", use_column_width=True)
+            elif os.path.exists("asl.jpg"):
+                st.image("asl.jpg", use_column_width=True)
+            else:
+                st.markdown("*(To use your own custom photo, just save it as `asl.png` or `asl.jpg` in your project folder!)*")
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Asl_alphabet_gallaudet_ann.svg/800px-Asl_alphabet_gallaudet_ann.svg.png", use_column_width=True)
+                
         if st.sidebar.button("Clear Typed Sentence"):
             st.session_state['alphabet_sentence'] = ""
             st.rerun()
