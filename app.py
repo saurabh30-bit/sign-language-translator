@@ -150,7 +150,30 @@ def play_audio_thread(text, lang_code):
 # ==========================
 
 def main():
-    st.title("Live Multi-Lingual Sign Translation Dashboard (Rule-Based)")
+    st.markdown("""
+        <div style='background: linear-gradient(135deg, #1A2980 0%, #26D0CE 100%); padding: 30px; border-radius: 15px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
+            <h1 style='color: white; margin: 0; font-family: sans-serif; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); font-size: 2.5rem;'>🤟 Live Multi-Lingual Sign Translation Dashboard</h1>
+            <p style='color: #E0E0E0; font-size: 18px; margin-top: 10px; font-weight: 300;'>Powered by Advanced Heuristic AI & MediaPipe</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    with st.expander("👨‍💻 About the Authors & Project"):
+        st.markdown("""
+        ### **Developers**
+        * **Saurabh Sandeep Shinde**
+        * **Durvesh Nilesh Pawar**
+        
+        🎓 **Education:** Students at **SSPM College of Engineering** (FE Branch CSE - AI/ML)
+        
+        🤖 **About This Program:**  
+        This project is a high-performance **Real-Time Sign Language Translator** built with Python, OpenCV, and MediaPipe. 
+        It goes beyond simple hand tracking by utilizing custom **Heuristic Geometry Algorithms** to recognize complex hand shapes and states. 
+        
+        **Key Features Include:**
+        - **Conversational Mode:** Translates signs dynamically into spoken English, Hindi, and Marathi using text-to-speech.
+        - **Alphabet Mode (A-Z):** Uses a custom-trained Neural Network (MLP Classifier) to allow continuous spelling of words and sentences.
+        - **Tutor Mode (Gamified):** An interactive learning environment that visually grades your physical hand shapes in real-time to help you practice!
+        """)
     
     # Available physical cameras 
     available_cameras = []
@@ -199,23 +222,29 @@ def main():
             st.session_state['alphabet_sentence'] = ""
             st.rerun()
 
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### ⚙️ System Configuration")
     language = st.sidebar.selectbox("Select Language Output:", ["English", "Hindi", "Marathi"])
     camera_index = st.sidebar.selectbox("Select Camera Source:", available_cameras, index=0)
-    run_webcam = st.sidebar.checkbox("Start Live Recognition", value=False)
+    
+    st.sidebar.markdown("---")
+    run_webcam = st.sidebar.checkbox("🟢 Start Live Recognition", value=False)
     
     # Layout UI Elements
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.markdown("### Webcam Feed")
+        st.markdown("<h3 style='color: #26D0CE;'>📷 Live Webcam Feed</h3>", unsafe_allow_html=True)
         frame_window = st.empty()
     
     with col2:
-        st.markdown("### Translation")
+        st.markdown("<h3 style='color: #26D0CE;'>📝 Translation Output</h3>", unsafe_allow_html=True)
         gesture_text_placeholder = st.empty()
-        st.markdown("### Status")
+        
+        st.markdown("<h3 style='color: #26D0CE;'>⚙️ System Status</h3>", unsafe_allow_html=True)
         status_placeholder = st.empty()
-        st.markdown("### Live 3D Depth Map")
+        
+        st.markdown("<h3 style='color: #26D0CE;'>🕶️ Live 3D Depth Map</h3>", unsafe_allow_html=True)
         z_axis_placeholder = st.empty()
         
     lang_codes = {"English": "en", "Hindi": "hi", "Marathi": "mr"}
